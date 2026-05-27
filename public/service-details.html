@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الخدمة - موقع SLS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .packages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .package-card {
+            cursor: pointer;
+            padding: 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .package-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <a href="services.html" class="logo">
+            <img src="img/logo.jpg" alt="SLS Logo" class="logo-img">
+            <span class="logo-text"></span>
+        </a>
+        <div class="user-info" id="user-info"></div>
+    </header>
+
+    <div class="container">
+        <a href="services.html" class="btn btn-primary mb-20" style="background: var(--bg-card); color: white;">العودة
+            للخدمات</a>
+
+        <div class="glass">
+            <h2 class="mb-20" style="color: var(--primary-color);" id="category-title">اختر الباقة</h2>
+
+            <div class="packages-grid" id="packages-grid">
+                <!-- Packages loaded here -->
+            </div>
+
+            <div class="form-group mt-40">
+                <label class="mb-20" style="display: block; color: var(--text-muted); font-size: 18px;">معرف اللاعب /
+                    رقم الحساب / رقم الموبايل</label>
+                <input type="text" id="player-id" class="form-control"
+                    placeholder="أدخل الآي دي، رقم الحساب أو رقم الموبايل الخاص بك..." required>
+            </div>
+
+            <div id="error-msg" style="color: var(--danger); margin-bottom: 15px; display: none;"></div>
+            <div id="success-msg" style="color: var(--success); margin-bottom: 15px; display: none;"></div>
+
+            <button class="btn btn-primary" id="buy-btn" style="width: 100%; font-size: 20px; padding: 15px;"
+                disabled>شراء الباقة</button>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        checkAuth();
+        updateHeader();
+        refreshUserData();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const categoryId = urlParams.get('id');
+        let selectedPackage = null;
+
+        async function loadPackages() {
+            try {
+                const res = await fetch(`http://localhost:3000/api/categories/${categoryId}/packages`);
+                const packages = await res.json();
+
+                const grid = document.getElementById('packages-grid');
+                grid.innerHTML = '';
+
+                packages.forEach(pkg => {
+                    const card = document.createElement('div');
+                    card.className = 'glass package-card';
+                    card.innerHTML = `
+                        <h3>${pkg.name}</h3>
+                        <div class="price">$${pkg.price.toFixed(2)}</div>
+                    `;
+                    card.onclick = () => selectPackage(card, pkg);
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function selectPackage(element, pkg) {
+            document.querySelectorAll('.package-card').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedPackage = pkg;
+            document.getElementById('buy-btn').disabled = false;
+        }
+
+        document.getElementById('buy-btn').addEventListener('click', async () => {
+            const playerId = document.getElementById('player-id').value;
+            const errorMsg = document.getElementById('error-msg');
+            const successMsg = document.getElementById('success-msg');
+
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+
+            if (!playerId) {
+                errorMsg.innerText = 'الرجاء إدخال المعرف أو رقم الحساب';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetchWithAuth('/orders', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        category_id: categoryId,
+                        package_id: selectedPackage.id,
+                        player_id: playerId
+                    })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    successMsg.innerText = 'تم إرسال طلب الشراء بنجاح! يمكنك متابعته من لوحة طلباتي.';
+                    successMsg.style.display = 'block';
+                    await refreshUserData();
+                    document.getElementById('player-id').value = '';
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                } else {
+                    errorMsg.innerText = data.error || 'فشل في الشراء';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (e) {
+                errorMsg.innerText = 'خطأ في الاتصال';
+                errorMsg.style.display = 'block';
+            }
+        });
+
+        loadPackages();
+    </script>
+</body>
+
+</html>

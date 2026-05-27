@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقع SLS - لوحة الإدارة</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .tab { flex: 1; min-width: 120px; text-align: center; padding: 10px 15px; cursor: pointer; background: var(--bg-card); border-radius: 8px; font-weight: bold; transition: 0.3s; }
+        .tab.active { background: var(--primary-color); color: #000; box-shadow: 0 0 10px rgba(0, 255, 204, 0.4); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        @media (max-width: 768px) {
+            .tab { font-size: 14px; padding: 8px; }
+            th, td { padding: 10px; font-size: 13px; }
+            .btn { padding: 8px 12px; font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="admin.html" class="logo">
+            <img src="img/logo.jpg" alt="SLS Logo" class="logo-img">
+            <span class="logo-text">SLS - الإدارة</span>
+        </a>
+        <div class="user-info" id="user-info"></div>
+    </header>
+
+    <div class="container">
+        <div class="glass">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('orders')">إدارة الطلبات</div>
+                <div class="tab" onclick="switchTab('users')">إدارة المستخدمين</div>
+                <div class="tab" onclick="switchTab('topups')">طلبات شحن الرصيد</div>
+            </div>
+
+            <!-- Orders Tab -->
+            <div id="orders-tab" class="tab-content active">
+                <h3 class="mb-20" style="color: var(--primary-color);">كل الطلبات</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>المستخدم</th>
+                                <th>الخدمة</th>
+                                <th>الباقة</th>
+                                <th>معرف اللاعب</th>
+                                <th>السعر</th>
+                                <th>الحالة</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-orders-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="users-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="color: var(--primary-color);">كل المستخدمين</h3>
+                    <button class="btn btn-primary" onclick="openCreateUserModal()">إنشاء مستخدم جديد</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>اسم المستخدم</th>
+                                <th>الصلاحية</th>
+                                <th>الرصيد الحالي</th>
+                                <th>شحن الرصيد</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Topups Tab -->
+            <div id="topups-tab" class="tab-content">
+                <h3 class="mb-20" style="color: var(--primary-color);">طلبات شحن الرصيد</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>المستخدم</th>
+                                <th>العملة</th>
+                                <th>المبلغ</th>
+                                <th>الطريقة</th>
+                                <th>الإيصال</th>
+                                <th>تاريخ الطلب</th>
+                                <th>الحالة</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-topups-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content glass">
+            <span class="close-btn" onclick="closeModal('status-modal')">&times;</span>
+            <h3 class="mb-20" style="color: var(--primary-color);">تحديث حالة الطلب #<span id="modal-order-id"></span></h3>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">الحالة الجديدة</label>
+                <select id="modal-status" class="form-control">
+                    <option value="pending">قيد المراجعة</option>
+                    <option value="accepted">مقبولة (تم الشحن)</option>
+                    <option value="rejected">مرفوضة (استرجاع الرصيد)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">ملاحظات (سبب الرفض مثلاً)</label>
+                <textarea id="modal-notes" class="form-control" rows="3"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="updateOrderStatus()" style="width: 100%;">حفظ التغييرات</button>
+        </div>
+    </div>
+
+    <!-- Balance Modal -->
+    <div class="modal" id="balance-modal">
+        <div class="modal-content glass">
+            <span class="close-btn" onclick="closeModal('balance-modal')">&times;</span>
+            <h3 class="mb-20" style="color: var(--primary-color);">شحن رصيد: <span id="modal-username"></span></h3>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">العملة</label>
+                <select id="modal-balance-currency" class="form-control">
+                    <option value="USD">دولار أمريكي (USD)</option>
+                    <option value="SYP">ليرة سورية (SYP)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">المبلغ المراد إضافته</label>
+                <input type="number" id="modal-amount" class="form-control" step="0.01" required>
+            </div>
+            <button class="btn btn-success" onclick="addBalance()" style="width: 100%;">إضافة الرصيد</button>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div class="modal" id="create-user-modal">
+        <div class="modal-content glass">
+            <span class="close-btn" onclick="closeModal('create-user-modal')">&times;</span>
+            <h3 class="mb-20" style="color: var(--primary-color);">إنشاء مستخدم جديد</h3>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">اسم المستخدم</label>
+                <input type="text" id="create-username" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">كلمة المرور</label>
+                <input type="password" id="create-password" class="form-control" required>
+            </div>
+            <div id="create-error-msg" style="color: var(--danger); margin-bottom: 15px; display: none;"></div>
+            <button class="btn btn-primary" onclick="createUser()" style="width: 100%;">إنشاء حساب</button>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div class="modal" id="receipt-modal">
+        <div class="modal-content glass" style="max-width: 600px; text-align: center;">
+            <span class="close-btn" onclick="closeModal('receipt-modal')">&times;</span>
+            <h3 class="mb-20" style="color: var(--primary-color);">صورة الإيصال</h3>
+            <img id="modal-receipt-img" style="max-width: 100%; border-radius: 8px;">
+        </div>
+    </div>
+
+    <!-- Topup Status Modal -->
+    <div class="modal" id="topup-status-modal">
+        <div class="modal-content glass">
+            <span class="close-btn" onclick="closeModal('topup-status-modal')">&times;</span>
+            <h3 class="mb-20" style="color: var(--primary-color);">تحديث حالة طلب الشحن #<span id="modal-topup-id"></span></h3>
+            <div class="form-group">
+                <label class="mb-20" style="display: block; color: var(--text-muted);">الحالة الجديدة</label>
+                <select id="modal-topup-status" class="form-control">
+                    <option value="pending">قيد المراجعة</option>
+                    <option value="accepted">مقبولة (إضافة الرصيد)</option>
+                    <option value="rejected">مرفوضة</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="updateTopupStatus()" style="width: 100%;">حفظ التغييرات</button>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const user = checkAuth();
+        if (user.role !== 'admin') {
+            window.location.href = 'services.html';
+        }
+        updateHeader();
+
+        const statusMap = {
+            'pending': { text: 'قيد المراجعة', class: 'pending' },
+            'accepted': { text: 'مقبولة', class: 'accepted' },
+            'rejected': { text: 'مرفوضة', class: 'rejected' }
+        };
+
+        let currentOrderId = null;
+        let currentUserId = null;
+        let currentTopupId = null;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabId + '-tab').classList.add('active');
+            
+            if (tabId === 'orders') loadAdminOrders();
+            if (tabId === 'users') loadAdminUsers();
+            if (tabId === 'topups') loadAdminTopups();
+        }
+
+        async function loadAdminOrders() {
+            try {
+                const res = await fetchWithAuth('/admin/orders');
+                const orders = await res.json();
+                const tbody = document.getElementById('admin-orders-table');
+                tbody.innerHTML = '';
+                
+                orders.forEach(order => {
+                    const statusInfo = statusMap[order.status];
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${order.id}</td>
+                            <td>${order.username}</td>
+                            <td>${order.service}</td>
+                            <td>${order.package}</td>
+                            <td style="font-family: monospace;">${order.player_id}</td>
+                            <td>$${order.price.toFixed(2)}</td>
+                            <td><span class="status ${statusInfo.class}">${statusInfo.text}</span></td>
+                            <td>
+                                <button class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;" onclick="openStatusModal(${order.id}, '${order.status}', '${order.notes || ''}')">تحديث</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const res = await fetchWithAuth('/admin/users');
+                const users = await res.json();
+                const tbody = document.getElementById('admin-users-table');
+                tbody.innerHTML = '';
+                
+                users.forEach(u => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${u.id}</td>
+                            <td>${u.username}</td>
+                            <td>${u.role === 'admin' ? 'مدير' : 'مستخدم'}</td>
+                            <td style="color: var(--success); font-weight: bold;">$${u.balance.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-success" style="padding: 5px 10px; font-size: 12px;" onclick="openBalanceModal(${u.id}, '${u.username}')">إضافة رصيد</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadAdminTopups() {
+            try {
+                const res = await fetchWithAuth('/admin/topups');
+                const topups = await res.json();
+                const tbody = document.getElementById('admin-topups-table');
+                tbody.innerHTML = '';
+                
+                topups.forEach(t => {
+                    const statusInfo = statusMap[t.status] || { text: 'غير معروف', class: 'pending' };
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${t.id}</td>
+                            <td>${t.username}</td>
+                            <td>${t.currency === 'SYP' ? 'ليرة سورية' : 'دولار'}</td>
+                            <td>${t.amount}</td>
+                            <td>${t.method}</td>
+                            <td><button class="btn btn-primary" style="padding: 5px;" onclick="viewReceipt('${t.receipt_image}')">عرض</button></td>
+                            <td dir="ltr">${new Date(t.created_at).toLocaleString('ar-EG')}</td>
+                            <td><span class="status ${statusInfo.class}">${statusInfo.text}</span></td>
+                            <td>
+                                <button class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;" onclick="openTopupModal(${t.id}, '${t.status}')">تحديث</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function openStatusModal(id, currentStatus, currentNotes) {
+            currentOrderId = id;
+            document.getElementById('modal-order-id').innerText = id;
+            document.getElementById('modal-status').value = currentStatus;
+            document.getElementById('modal-notes').value = currentNotes;
+            document.getElementById('status-modal').classList.add('active');
+        }
+
+        function openBalanceModal(id, username) {
+            currentUserId = id;
+            document.getElementById('modal-username').innerText = username;
+            document.getElementById('modal-amount').value = '';
+            document.getElementById('balance-modal').classList.add('active');
+        }
+
+        function openCreateUserModal() {
+            document.getElementById('create-username').value = '';
+            document.getElementById('create-password').value = '';
+            document.getElementById('create-error-msg').style.display = 'none';
+            document.getElementById('create-user-modal').classList.add('active');
+        }
+
+        function viewReceipt(base64Str) {
+            document.getElementById('modal-receipt-img').src = base64Str;
+            document.getElementById('receipt-modal').classList.add('active');
+        }
+
+        function openTopupModal(id, currentStatus) {
+            currentTopupId = id;
+            document.getElementById('modal-topup-id').innerText = id;
+            document.getElementById('modal-topup-status').value = currentStatus;
+            document.getElementById('topup-status-modal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function updateOrderStatus() {
+            const status = document.getElementById('modal-status').value;
+            const notes = document.getElementById('modal-notes').value;
+            
+            try {
+                const res = await fetchWithAuth(`/admin/orders/${currentOrderId}/status`, {
+                    method: 'POST',
+                    body: JSON.stringify({ status, notes })
+                });
+                if (res.ok) {
+                    closeModal('status-modal');
+                    loadAdminOrders();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function updateTopupStatus() {
+            const status = document.getElementById('modal-topup-status').value;
+            try {
+                const res = await fetchWithAuth(`/admin/topups/${currentTopupId}/status`, {
+                    method: 'POST',
+                    body: JSON.stringify({ status })
+                });
+                if (res.ok) {
+                    closeModal('topup-status-modal');
+                    loadAdminTopups();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function addBalance() {
+            const amount = parseFloat(document.getElementById('modal-amount').value);
+            const currency = document.getElementById('modal-balance-currency').value;
+            if (!amount || amount <= 0) return alert('الرجاء إدخال مبلغ صحيح');
+            
+            try {
+                const res = await fetchWithAuth(`/admin/users/${currentUserId}/balance`, {
+                    method: 'POST',
+                    body: JSON.stringify({ amount, currency })
+                });
+                if (res.ok) {
+                    closeModal('balance-modal');
+                    loadAdminUsers();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function createUser() {
+            const username = document.getElementById('create-username').value;
+            const password = document.getElementById('create-password').value;
+            const errorMsg = document.getElementById('create-error-msg');
+            
+            errorMsg.style.display = 'none';
+
+            if (!username || !password) {
+                errorMsg.innerText = 'الرجاء إدخال اسم المستخدم وكلمة المرور';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetchWithAuth('/admin/users/create', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    closeModal('create-user-modal');
+                    loadAdminUsers();
+                    alert('تم إنشاء المستخدم بنجاح!');
+                } else {
+                    errorMsg.innerText = data.error || 'فشل في إنشاء الحساب';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (e) {
+                errorMsg.innerText = 'خطأ في الاتصال';
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        // Init
+        loadAdminOrders();
+    </script>
+</body>
+</html>

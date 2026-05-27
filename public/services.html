@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الخدمات - SLS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header>
+        <a href="services.html" class="logo">
+            <img src="img/logo.jpg" alt="SLS Logo" class="logo-img">
+            <span class="logo-text"></span>
+        </a>
+        <div class="user-info" id="user-info"></div>
+    </header>
+
+    <div class="container">
+        <div class="glass mb-40">
+            <h2 class="mb-20" style="color: var(--primary-color);">مرحباً بك في متجرنا</h2>
+            <p style="color: var(--text-muted); font-size: 18px;">اختر الخدمة التي ترغب في شحنها من القائمة أدناه.</p>
+            <div style="margin-top: 20px;">
+                <a href="dashboard.html" class="btn btn-primary">طلباتي السابقة</a>
+            </div>
+        </div>
+
+        <div class="grid" id="services-grid">
+            <!-- Services will be loaded here dynamically -->
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        checkAuth();
+        updateHeader();
+        refreshUserData();
+
+        async function loadServices() {
+            try {
+                const res = await fetch('http://localhost:3000/api/categories');
+                const categories = await res.json();
+
+                const grid = document.getElementById('services-grid');
+                grid.innerHTML = '';
+
+                categories.forEach(cat => {
+                    const imgSrc = `img/${cat.image.replace('.png', '.svg')}`;
+                    grid.innerHTML += `
+                        <div class="glass service-card" onclick="window.location.href='service-details.html?id=${cat.id}'">
+                            <img src="${imgSrc}" onerror="this.src='img/logo.jpg'" alt="${cat.name}" style="width: 80px; height: 80px; margin: 0 auto 15px; display: block; object-fit: contain;">
+                            <h3 style="color: white; font-size: 24px; margin-bottom: 15px;">${cat.name}</h3>
+                            <p style="color: var(--text-muted);">انقر لعرض الباقات والشحن</p>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        loadServices();
+    </script>
+</body>
+
+</html>

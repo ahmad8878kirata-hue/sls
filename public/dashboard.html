@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>طلباتي - موقع SLS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <a href="services.html" class="logo">
+            <img src="img/logo.jpg" alt="SLS Logo" class="logo-img">
+            <span class="logo-text">SLS</span>
+        </a>
+        <div class="user-info" id="user-info"></div>
+    </header>
+
+    <div class="container">
+        <div class="glass">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: var(--primary-color);">سجل الطلبات</h2>
+                <a href="services.html" class="btn btn-primary" style="background: var(--bg-card); color: white;">طلب جديد</a>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>الخدمة</th>
+                            <th>الباقة</th>
+                            <th>معرف اللاعب / الحساب</th>
+                            <th>السعر</th>
+                            <th>الحالة</th>
+                            <th>التاريخ</th>
+                            <th>ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table">
+                        <!-- Orders loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        checkAuth();
+        updateHeader();
+
+        const statusMap = {
+            'pending': { text: 'قيد المراجعة', class: 'pending' },
+            'accepted': { text: 'مقبولة (مدفوعة)', class: 'accepted' },
+            'rejected': { text: 'مرفوضة', class: 'rejected' }
+        };
+
+        async function loadOrders() {
+            try {
+                const res = await fetchWithAuth('/my-orders');
+                const orders = await res.json();
+                
+                const tbody = document.getElementById('orders-table');
+                tbody.innerHTML = '';
+                
+                if (orders.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="color: var(--text-muted);">لا توجد طلبات سابقة</td></tr>`;
+                    return;
+                }
+
+                orders.forEach(order => {
+                    const statusInfo = statusMap[order.status] || statusMap['pending'];
+                    const date = new Date(order.created_at).toLocaleString('ar-EG');
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${order.id}</td>
+                            <td>${order.service}</td>
+                            <td>${order.package}</td>
+                            <td style="font-family: monospace;">${order.player_id}</td>
+                            <td style="color: var(--primary-color); font-weight: bold;">$${order.price.toFixed(2)}</td>
+                            <td><span class="status ${statusInfo.class}">${statusInfo.text}</span></td>
+                            <td style="direction: ltr; text-align: right;">${date}</td>
+                            <td style="color: var(--warning);">${order.notes || '-'}</td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>
