@@ -75,7 +75,7 @@
 
         async function loadPackages() {
             try {
-                const res = await fetch(`http://localhost:3000/api/categories/${categoryId}/packages`);
+                const res = await fetch(`http://localhost:3001/api/categories/${categoryId}/packages`);
                 const packages = await res.json();
 
                 const grid = document.getElementById('packages-grid');

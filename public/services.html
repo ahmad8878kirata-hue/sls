@@ -39,7 +39,7 @@
 
         async function loadServices() {
             try {
-                const res = await fetch('http://localhost:3000/api/categories');
+                const res = await fetch('http://localhost:3001/api/categories');
                 const categories = await res.json();
 
                 const grid = document.getElementById('services-grid');
