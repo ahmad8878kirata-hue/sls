@@ -8,11 +8,11 @@ const fs = require('fs');
 const https = require('https');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 const SECRET_KEY = 'super_secret_key_change_in_production';
 
 app.use(cors());
-app.use(express.json({limit: '10mb'}));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // WhatsApp Notification via CallMeBot
@@ -25,7 +25,7 @@ const CALLMEBOT_APIKEY = 'YOUR_APIKEY_HERE'; // ضع مفتاح API الخاص �
 function sendWhatsAppNotification(message) {
     const encodedMessage = encodeURIComponent(message);
     const url = `https://api.callmebot.com/whatsapp.php?phone=${WHATSAPP_PHONE}&text=${encodedMessage}&apikey=${CALLMEBOT_APIKEY}`;
-    
+
     https.get(url, (res) => {
         console.log(`WhatsApp notification sent. Status: ${res.statusCode}`);
     }).on('error', (err) => {
@@ -72,7 +72,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )`);
-        
+
         db.run(`ALTER TABLE users ADD COLUMN balance_syp REAL DEFAULT 0`, (err) => {
             // Ignore error if column already exists
         });
@@ -88,13 +88,13 @@ const db = new sqlite3.Database(dbPath, (err) => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )`);
-        
+
         db.run(`CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             image TEXT
         )`);
-        
+
         db.run(`CREATE TABLE IF NOT EXISTS packages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             category_id INTEGER,
@@ -116,7 +116,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         db.run("INSERT INTO categories (name, image) VALUES ('تحويل إلى شام كاش (Cham Cash)', 'chamcash.png')"); // 6
                         db.run("INSERT INTO categories (name, image) VALUES ('سيريتل كاش / كاش موبايل', 'syriatelcash.png')"); // 7
                         db.run("INSERT INTO categories (name, image) VALUES ('رسوم إلكترونية (جواز سفر، الخ)', 'gov.png')"); // 8
-                        
+
                         setTimeout(() => {
                             // PUBG
                             db.run("INSERT INTO packages (category_id, amount, name, price) VALUES (1, 60, '60 UC', 1.00)");
@@ -182,7 +182,7 @@ app.post('/api/register', async (req, res) => {
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hashedPassword], function(err) {
+        db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hashedPassword], function (err) {
             if (err) return res.status(400).json({ error: 'Username already exists' });
             res.json({ message: 'User created successfully', id: this.lastID });
         });
@@ -229,32 +229,32 @@ app.get('/api/categories/:id/packages', (req, res) => {
 // Orders API
 app.post('/api/orders', authenticateToken, (req, res) => {
     const { category_id, package_id, player_id } = req.body;
-    
+
     // Get package details
     db.get(`SELECT p.*, c.name as category_name FROM packages p JOIN categories c ON p.category_id = c.id WHERE p.id = ?`, [package_id], (err, pkg) => {
         if (err || !pkg) return res.status(404).json({ error: 'Package not found' });
-        
+
         // Check user balance
         db.get(`SELECT balance FROM users WHERE id = ?`, [req.user.id], (err, user) => {
             if (err || !user) return res.status(404).json({ error: 'User not found' });
-            
+
             if (user.balance < pkg.price) {
                 return res.status(400).json({ error: 'Insufficient balance' });
             }
-            
+
             // Deduct balance and create order
             db.serialize(() => {
                 db.run('BEGIN TRANSACTION');
                 db.run(`UPDATE users SET balance = balance - ? WHERE id = ?`, [pkg.price, req.user.id]);
                 db.run(`INSERT INTO orders (user_id, service, package, price, player_id) VALUES (?, ?, ?, ?, ?)`,
-                    [req.user.id, pkg.category_name, pkg.name, pkg.price, player_id], function(err) {
+                    [req.user.id, pkg.category_name, pkg.name, pkg.price, player_id], function (err) {
                         if (err) {
                             db.run('ROLLBACK');
                             return res.status(500).json({ error: 'Failed to create order' });
                         }
                         db.run('COMMIT');
                         res.json({ message: 'Order created successfully', orderId: this.lastID });
-                        
+
                         // Send WhatsApp Notification via CallMeBot (background, silent)
                         const notifyMsg = `🔔 طلب جديد على موقع SLS!\n- رقم الطلب: #${this.lastID}\n- الخدمة: ${pkg.category_name}\n- الباقة: ${pkg.name}\n- المعرف / الآي دي: ${player_id}\n- السعر: $${pkg.price}\n\nيرجى الدخول للوحة التحكم لتنفيذ الطلب.`;
                         sendWhatsAppNotification(notifyMsg);
@@ -274,7 +274,7 @@ app.get('/api/my-orders', authenticateToken, (req, res) => {
 app.post('/api/top-up', authenticateToken, (req, res) => {
     const { currency, method, amount, receipt_image } = req.body;
     db.run(`INSERT INTO topup_requests (user_id, currency, amount, method, receipt_image) VALUES (?, ?, ?, ?, ?)`,
-        [req.user.id, currency, amount, method, receipt_image], function(err) {
+        [req.user.id, currency, amount, method, receipt_image], function (err) {
             if (err) return res.status(500).json({ error: 'Failed to create top-up request' });
             res.json({ message: 'Top-up request created successfully', id: this.lastID });
             const notifyMsg = `🔔 طلب شحن رصيد جديد!\n- رقم الطلب: #${this.lastID}\n- العملة: ${currency}\n- المبلغ: ${amount}\n- الطريقة: ${method}\n\nيرجى الدخول للوحة التحكم للمراجعة.`;
@@ -293,7 +293,7 @@ app.get('/api/admin/users', authenticateToken, isAdmin, (req, res) => {
 app.post('/api/admin/users/:id/balance', authenticateToken, isAdmin, (req, res) => {
     const { amount, currency } = req.body;
     const balanceCol = currency === 'SYP' ? 'balance_syp' : 'balance';
-    db.run(`UPDATE users SET ${balanceCol} = IFNULL(${balanceCol}, 0) + ? WHERE id = ?`, [amount, req.params.id], function(err) {
+    db.run(`UPDATE users SET ${balanceCol} = IFNULL(${balanceCol}, 0) + ? WHERE id = ?`, [amount, req.params.id], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'Balance updated successfully' });
     });
@@ -305,7 +305,7 @@ app.post('/api/admin/users/create', authenticateToken, isAdmin, async (req, res)
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hashedPassword], function(err) {
+        db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hashedPassword], function (err) {
             if (err) return res.status(400).json({ error: 'Username already exists' });
             res.json({ message: 'User created successfully', id: this.lastID });
         });
@@ -323,17 +323,17 @@ app.get('/api/admin/orders', authenticateToken, isAdmin, (req, res) => {
 
 app.post('/api/admin/orders/:id/status', authenticateToken, isAdmin, (req, res) => {
     const { status, notes } = req.body; // status: 'pending', 'accepted', 'rejected'
-    
+
     if (status === 'rejected') {
         // Refund logic
         db.get(`SELECT user_id, price, status FROM orders WHERE id = ?`, [req.params.id], (err, order) => {
             if (err || !order) return res.status(404).json({ error: 'Order not found' });
-            
+
             if (order.status !== 'rejected') {
                 db.serialize(() => {
                     db.run('BEGIN TRANSACTION');
                     db.run(`UPDATE users SET balance = balance + ? WHERE id = ?`, [order.price, order.user_id]);
-                    db.run(`UPDATE orders SET status = ?, notes = ? WHERE id = ?`, [status, notes || '', req.params.id], function(err) {
+                    db.run(`UPDATE orders SET status = ?, notes = ? WHERE id = ?`, [status, notes || '', req.params.id], function (err) {
                         if (err) {
                             db.run('ROLLBACK');
                             return res.status(500).json({ error: 'Failed to update' });
@@ -347,7 +347,7 @@ app.post('/api/admin/orders/:id/status', authenticateToken, isAdmin, (req, res) 
             }
         });
     } else {
-        db.run(`UPDATE orders SET status = ?, notes = ? WHERE id = ?`, [status, notes || '', req.params.id], function(err) {
+        db.run(`UPDATE orders SET status = ?, notes = ? WHERE id = ?`, [status, notes || '', req.params.id], function (err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ message: 'Order status updated' });
         });
@@ -365,13 +365,13 @@ app.post('/api/admin/topups/:id/status', authenticateToken, isAdmin, (req, res) 
     const { status, notes } = req.body; // 'accepted' or 'rejected'
     db.get(`SELECT * FROM topup_requests WHERE id = ?`, [req.params.id], (err, request) => {
         if (err || !request) return res.status(404).json({ error: 'Request not found' });
-        
+
         if (request.status === 'pending' && status === 'accepted') {
             const balanceCol = request.currency === 'SYP' ? 'balance_syp' : 'balance';
             db.serialize(() => {
                 db.run('BEGIN TRANSACTION');
                 db.run(`UPDATE users SET ${balanceCol} = IFNULL(${balanceCol}, 0) + ? WHERE id = ?`, [request.amount, request.user_id]);
-                db.run(`UPDATE topup_requests SET status = ? WHERE id = ?`, [status, req.params.id], function(err) {
+                db.run(`UPDATE topup_requests SET status = ? WHERE id = ?`, [status, req.params.id], function (err) {
                     if (err) {
                         db.run('ROLLBACK');
                         return res.status(500).json({ error: 'Failed to update' });
@@ -381,7 +381,7 @@ app.post('/api/admin/topups/:id/status', authenticateToken, isAdmin, (req, res) 
                 });
             });
         } else {
-            db.run(`UPDATE topup_requests SET status = ? WHERE id = ?`, [status, req.params.id], function(err) {
+            db.run(`UPDATE topup_requests SET status = ? WHERE id = ?`, [status, req.params.id], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ message: 'Request status updated' });
             });

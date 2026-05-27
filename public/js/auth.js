@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:3001/api';
 
 function setToken(token) {
     localStorage.setItem('token', token);
@@ -57,7 +57,7 @@ function checkAuth() {
 function updateHeader() {
     const user = getUser();
     const header = document.querySelector('header');
-    
+
     if (user && header) {
         if (!document.getElementById('nav-menu')) {
             const userInfoEl = document.getElementById('user-info');
@@ -65,7 +65,7 @@ function updateHeader() {
 
             const isAdmin = user.role === 'admin';
             let navHTML = '';
-            
+
             if (isAdmin) {
                 navHTML = `
                     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMenu()"></div>
@@ -113,7 +113,7 @@ function updateHeader() {
                     </div>
                 `;
             }
-            
+
             header.innerHTML = `
                 <a href="${isAdmin ? 'admin.html' : 'services.html'}" class="logo">
                     <img src="img/logo.jpg" alt="SLS Logo" class="logo-img">
